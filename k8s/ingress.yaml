@@ -12,7 +12,7 @@ metadata:
 spec:
   ingressClassName: nginx  # Adjust based on your ingress controller
   rules:
-  - host: divinum-officium.example.com  # Change to your domain
+  - host: divinum-officium.blassinga.me # Change to your domain
     http:
       paths:
       - path: /
