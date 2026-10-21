@@ -123,12 +123,12 @@ Run these on k8s-mgmt. `skopeo` comes from `sudo apt install skopeo`.
 
 ```bash
 # 1. Find the current upstream build and its source commit
-skopeo inspect docker://ghcr.io/divinumofficium/divinum-officium:master \
+skopeo inspect --no-creds docker://ghcr.io/divinumofficium/divinum-officium:master \
   | grep -E '"Digest"|image.revision|image.created'
 
 # 2. Copy it into the local registry under <yyyymmdd>-<first 7 of revision>
 TAG=20261021-242519b
-skopeo copy --dest-tls-verify=false \
+skopeo copy --src-no-creds --dest-tls-verify=false \
   docker://ghcr.io/divinumofficium/divinum-officium:master \
   docker://192.168.10.50:30500/divinum-officium:$TAG
 
@@ -155,6 +155,9 @@ Check each new upstream build's listening port. Starman uses 8080 (`--port 8080`
 
 ### Pods CrashLoopBackOff with "connection refused" on the probes
 The container isn't listening on the port the `http` port name points to. Compare `kubectl logs <pod>`, which shows `Binding to TCP port …`, with `containerPort` in `deployment.yaml`.
+
+### skopeo: "Requesting bearer token: 403 Forbidden"
+skopeo sent a saved GHCR login, usually an expired one, and GHCR rejected it. The image is public, so use `--src-no-creds`, as in the commands above. To remove the stale login, run `skopeo logout ghcr.io`.
 
 ### Pods ImagePullBackOff on 192.168.10.50:30500
 Either the tag in `kustomization.yaml` was never copied into the registry (see "Updating the image"), or the node doesn't trust the plain-HTTP registry. For the latter, run `ansible-playbook playbooks/07-containerd-registry.yml -l <node>` in kubernetes-homelab.
