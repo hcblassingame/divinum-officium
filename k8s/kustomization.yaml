@@ -12,11 +12,16 @@ resources:
   - service.yaml
   - ingress.yaml
 
-# You can add configuration overrides here
-# For example:
-# images:
-#   - name: ghcr.io/divinumofficium/divinum-officium
-#     newTag: v1.2.3  # Override the image tag
+# Pin the image by digest. Upstream only publishes a moving :master tag, and
+# builds from ~Oct 2026 listen on 8080 as a non-root user, which breaks the
+# port-80 probes below. With a floating tag each node ran whatever it had
+# cached, so a reschedule could land on the broken build. This digest is the
+# last build known to serve on port 80.
+# To move to a newer build: switch containerPort, both probes and the Service
+# targetPort to 8080, test it, then update the digest here.
+images:
+  - name: ghcr.io/divinumofficium/divinum-officium
+    digest: sha256:633b522f593479df2b44cd982d806da9d16688aa718955d4f3bacf71f5a6859b
 
 # configMapGenerator:
 #   - name: app-config
