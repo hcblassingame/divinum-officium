@@ -115,7 +115,52 @@ spec:
 
 Commit, push, and ArgoCD will handle the rest!
 
+## Updating the image
+
+The cluster doesn't pull from GHCR directly. Upstream publishes only the moving `:master` and `:nightly` tags and deletes old builds. With that setup, pods on different nodes ran different builds, and a pinned GHCR digest disappeared within days. Instead, each build we run is copied into the cluster's local registry (`192.168.10.50:30500`, plain HTTP) under a fixed tag, and `kustomization.yaml` points at that tag.
+
+Run these on k8s-mgmt. `skopeo` comes from `sudo apt install skopeo`.
+
+```bash
+# 1. Find the current upstream build and its source commit
+skopeo inspect --no-creds docker://ghcr.io/divinumofficium/divinum-officium:master \
+  | grep -E '"Digest"|image.revision|image.created'
+
+# 2. Copy it into the local registry under <yyyymmdd>-<first 7 of revision>
+TAG=20261021-242519b
+skopeo copy --src-no-creds --dest-tls-verify=false \
+  docker://ghcr.io/divinumofficium/divinum-officium:master \
+  docker://192.168.10.50:30500/divinum-officium:$TAG
+
+# 3. Check it's there
+curl -s http://192.168.10.50:30500/v2/divinum-officium/tags/list
+```
+
+Next, set `newTag:` in `k8s/kustomization.yaml` to the new tag, commit, and push. Argo CD rolls out the change.
+
+Before pushing, test the build:
+
+```bash
+kubectl run do-test --rm -i --restart=Never \
+  --image=192.168.10.50:30500/divinum-officium:$TAG -- true   # proves a node can pull it
+kubectl -n default set image deploy/divinum-officium divinum-officium=192.168.10.50:30500/divinum-officium:$TAG
+kubectl -n default rollout status deploy/divinum-officium   # Argo CD reverts this on its next sync
+```
+
+Keep the previous tag in the registry so you can roll back by changing `newTag` back.
+
+Check each new upstream build's listening port. Starman uses 8080 (`--port 8080` in the image's CMD). If upstream changes it, update `containerPort` in `deployment.yaml`; the probes and Service follow the `http` port name.
+
 ## Troubleshooting
+
+### Pods CrashLoopBackOff with "connection refused" on the probes
+The container isn't listening on the port the `http` port name points to. Compare `kubectl logs <pod>`, which shows `Binding to TCP port …`, with `containerPort` in `deployment.yaml`.
+
+### skopeo: "Requesting bearer token: 403 Forbidden"
+skopeo sent a saved GHCR login, usually an expired one, and GHCR rejected it. The image is public, so use `--src-no-creds`, as in the commands above. To remove the stale login, run `skopeo logout ghcr.io`.
+
+### Pods ImagePullBackOff on 192.168.10.50:30500
+Either the tag in `kustomization.yaml` was never copied into the registry (see "Updating the image"), or the node doesn't trust the plain-HTTP registry. For the latter, run `ansible-playbook playbooks/07-containerd-registry.yml -l <node>` in kubernetes-homelab.
 
 ### Check ArgoCD Application Status
 ```bash

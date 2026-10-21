@@ -12,16 +12,15 @@ resources:
   - service.yaml
   - ingress.yaml
 
-# Pin the image by digest. Upstream only publishes a moving :master tag, and
-# builds from ~Oct 2026 listen on 8080 as a non-root user, which breaks the
-# port-80 probes below. With a floating tag each node ran whatever it had
-# cached, so a reschedule could land on the broken build. This digest is the
-# last build known to serve on port 80.
-# To move to a newer build: switch containerPort, both probes and the Service
-# targetPort to 8080, test it, then update the digest here.
+# The image is mirrored into the cluster's local registry and pinned there.
+# Upstream (ghcr.io/divinumofficium/divinum-officium) only keeps the moving
+# :master and :nightly tags and deletes old builds, so a GHCR digest pin
+# breaks as soon as a pod lands on a node without it cached.
+# Updating the build: see "Updating the image" in k8s/README.md.
 images:
   - name: ghcr.io/divinumofficium/divinum-officium
-    digest: sha256:633b522f593479df2b44cd982d806da9d16688aa718955d4f3bacf71f5a6859b
+    newName: 192.168.10.50:30500/divinum-officium
+    newTag: 20261021-242519b   # upstream master built 2026-10-21, commit 242519b
 
 # configMapGenerator:
 #   - name: app-config

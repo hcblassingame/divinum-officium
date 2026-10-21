@@ -19,7 +19,8 @@ spec:
       - name: divinum-officium
         image: ghcr.io/divinumofficium/divinum-officium:master
         ports:
-        - containerPort: 80
+        # Upstream images since ~Oct 2026 run Starman on 8080 as www-data.
+        - containerPort: 8080
           name: http
         resources:
           requests:
@@ -31,13 +32,15 @@ spec:
         livenessProbe:
           httpGet:
             path: /
-            port: 80
+            port: http
           initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
         readinessProbe:
           httpGet:
             path: /
-            port: 80
+            port: http
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 3
 
