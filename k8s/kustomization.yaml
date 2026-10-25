@@ -19,7 +19,7 @@ resources:
 # Updating the build: see "Updating the image" in k8s/README.md.
 images:
   - name: ghcr.io/divinumofficium/divinum-officium
-    newName: 192.168.10.50:30500/divinum-officium
+    newName: 192.168.10.48:30500/divinum-officium
     newTag: 20261021-242519b   # upstream master built 2026-10-21, commit 242519b
 
 # configMapGenerator:
